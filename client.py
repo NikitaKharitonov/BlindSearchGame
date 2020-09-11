@@ -32,12 +32,21 @@ class Client(object):
         except (socket.error, OverflowError):
             self.ui.alert(ERROR, CONNECTION_ERROR)
             return
-        message = model.Message(username=self.username, message="", quit=False)
+
         try:
-            self.sock.sendall(message.marshal())
+            username = model.Message(**json.loads(self.receive_all()))
         except (ConnectionAbortedError, ConnectionResetError):
             if not self.closing:
                 self.ui.alert(ERROR, CONNECTION_ERROR)
+            return
+        self.username = username.message
+        self.ui.gui.title(self.username.upper())
+        # message = model.Message(username=self.username, message="", quit=False)
+        # try:
+        #     self.sock.sendall(message.marshal())
+        # except (ConnectionAbortedError, ConnectionResetError):
+        #     if not self.closing:
+        #         self.ui.alert(ERROR, CONNECTION_ERROR)
         self.receive_worker = threading.Thread(target=self.receive)
         self.receive_worker.start()
         self.ui.loop()
@@ -84,5 +93,6 @@ class Client(object):
 
 
 if __name__ == "__main__":
+    print("Heloh?".lower())
     app = Client()
     app.execute()

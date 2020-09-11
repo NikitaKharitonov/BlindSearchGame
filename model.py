@@ -1,10 +1,42 @@
 import json
+import jsonschema
+from jsonschema import validate
 
 END_CHARACTER = "\0"
 MESSAGE_PATTERN = "{username}>{message}"
 TARGET_ENCODING = "utf-8"
 
+schema = {
+    "type": "object",
+    "properties": {
+        "players": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "username": {"type": "string"},
+                        "x": {"type": "number"},
+                        "y": {"type": "number"}
+                    }
+                }
+            ]
+        }
+    }
+}
+
+
 # todo simplify
+def validate_json(data):
+    try:
+        validate(instance=data, schema=schema)
+    except jsonschema.exceptions.ValidationError as err:
+        return False
+    return True
+
+
 class Message(object):
     def __init__(self, **kwargs):
         self.username = None

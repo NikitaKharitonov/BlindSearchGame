@@ -35,7 +35,8 @@ class BlindSearchGameUI(object):
         # self.gui.title(TITLE)
         self.fill_frame()
         self.gui.protocol(CLOSING_PROTOCOL, self.on_closing)
-        return self.input_dialogs()
+        # return self.input_dialogs()
+        return True
 
     def loop(self):
         self.gui.mainloop()
@@ -56,10 +57,10 @@ class BlindSearchGameUI(object):
 
     def input_dialogs(self):
         self.gui.lower()
-        self.client.username = simpledialog.askstring(USERNAME, INPUT_USERNAME, parent=self.gui)
+        # self.client.username = simpledialog.askstring(USERNAME, INPUT_USERNAME, parent=self.gui).lower()
         if self.client.username is None:
             return False
-        self.gui.title(self.client.username)
+        self.gui.title(self.client.username.upper())
         return True
 
     def alert(self, title, message):
