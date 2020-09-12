@@ -24,9 +24,5 @@ json_schema = {
     }
 }
 
-with open('data.json') as json_file:
-    data = json.load(json_file)
-
-validate(instance=data, schema=json_schema)
-
-print(data['players'])
+player = Player('nikita', 1, 2, None)
+print(dict(player))

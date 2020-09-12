@@ -41,16 +41,8 @@ schema = {
 def validate_json(data):
     try:
         validate(instance=data, schema=schema)
-        # data['players'][0]['username']
-        # data['players'][0]['x']
-        # data['players'][0]['y']
-        # data['players'][1]['username']
-        # data['players'][1]['x']
-        # data['players'][1]['y']
     except jsonschema.exceptions.ValidationError as err:
         return False
-    # except KeyError:
-    #     return False
     return True
 
 
@@ -66,11 +58,3 @@ class Message(object):
 
     def marshal(self):
         return (json.dumps(self.__dict__) + END_CHARACTER).encode(TARGET_ENCODING)
-
-
-# with open('data.json') as json_file:
-#     data = json.load(json_file)
-#
-# validate(instance=data, schema=schema)
-#
-# print(json.dumps(data['players'], indent=4))
