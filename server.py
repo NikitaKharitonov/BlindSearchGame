@@ -28,26 +28,28 @@ class Server(object):
         self.players = list()
         self.port = PORT
         self.socket = None
-        self.new_game = True
 
     def broadcast(self, message):
         for player in self.players:
             player.client_socket.sendall(message.marshal())
 
-    def receive(self, client):
+    def receive(self, client_socket):
         buffer = ""
         while not buffer.endswith(model.END_CHARACTER):
-            buffer += client.recv(BUFFER_SIZE).decode(model.TARGET_ENCODING)
+            buffer += client_socket.recv(BUFFER_SIZE).decode(model.TARGET_ENCODING)
         return buffer[:-1]
+
+    def send(self, client_socket, message):
+        client_socket.sendall(message.marshal())
 
     def close_client_sockets(self):
         self.socket.close()
         for player in self.players:
             player.client_socket.close()
 
-    def dump_game_state_to_json(self):
+    def dump_game_state_to_json(self, players):
         data = {'players': []}
-        for player in self.players:
+        for player in players:
             data['players'].append(player.dict())
         with open(JSON_FILE_PATH, 'w') as outfile:
             json.dump(data, outfile, indent=4)
@@ -64,7 +66,7 @@ class Server(object):
             self.players = game.parse_data(data)
         else:
             self.players = game.init_players()
-        self.new_game = not success
+        new_game = not success
 
         # Initialize the socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -86,21 +88,23 @@ class Server(object):
             print(CONNECTED_PATTERN.format(*address))
             player = self.players[connected_clients_count]
             player.client_socket = client_socket
-            client_socket.sendall(Message(username=SERVER, message=player.username).marshal())
+            # client_socket.sendall(Message(username=SERVER, message=player.username).marshal())
+            self.send(client_socket, Message(username=SERVER, message=player.username))
             connected_clients_count += 1
 
-        if self.new_game:
+        if new_game:
             message = f"GAME BEGIN! Distance to award: {round(self.players[0].distance(), 3)}"
             self.broadcast(Message(username=SERVER, message=message))
         else:
             for player in self.players:
                 message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
-                player.client_socket.sendall(Message(username=SERVER, message=message).marshal())
+                # player.client_socket.sendall(Message(username=SERVER, message=message).marshal())
+                self.send(player.client_socket, Message(username=SERVER, message=message))
 
         for player in self.players:
             print(player)
 
-        self.dump_game_state_to_json()
+        self.dump_game_state_to_json(self.players)
 
         # HANDLE
 
@@ -110,7 +114,8 @@ class Server(object):
             for player in self.players:
                 client_socket = player.client_socket
                 message_from_server = Message(username=SERVER, message=MOVE_ALLOWED)
-                client_socket.sendall(message_from_server.marshal())
+                # client_socket.sendall(message_from_server.marshal())
+                self.send(client_socket, message_from_server)
                 try:
                     message = Message(**json.loads(self.receive(client_socket)))
                 except(ConnectionAbortedError, ConnectionResetError):
@@ -146,12 +151,12 @@ class Server(object):
                     cont = False
                     break
 
-            self.dump_game_state_to_json()
+            self.dump_game_state_to_json(self.players)
 
         # CLOSE
 
         self.close_client_sockets()
-        self.dump_game_state_to_json()
+        self.dump_game_state_to_json(self.players)
         print(CLOSING)
 
 
