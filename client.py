@@ -27,11 +27,13 @@ class Client(object):
         if not self.ui.show():
             return
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.sock.connect((socket.gethostname(), 1234))
-        except (socket.error, OverflowError):
-            self.ui.alert(ERROR, CONNECTION_ERROR)
-            return
+        print("Waiting for server")
+        while True:
+            try:
+                self.sock.connect((socket.gethostname(), server.PORT))
+                break
+            except (socket.error, OverflowError):
+                pass
 
         try:
             username = model.Message(**json.loads(self.receive_all()))
@@ -41,12 +43,6 @@ class Client(object):
             return
         self.username = username.message
         self.ui.gui.title(self.username.upper())
-        # message = model.Message(username=self.username, message="", quit=False)
-        # try:
-        #     self.sock.sendall(message.marshal())
-        # except (ConnectionAbortedError, ConnectionResetError):
-        #     if not self.closing:
-        #         self.ui.alert(ERROR, CONNECTION_ERROR)
         self.receive_worker = threading.Thread(target=self.receive)
         self.receive_worker.start()
         self.ui.loop()
@@ -69,11 +65,9 @@ class Client(object):
             buffer += self.sock.recv(BUFFER_SIZE).decode(model.TARGET_ENCODING)
         return buffer[:-1]
 
-
     def send(self, event=None):
         if self.move:
             message = self.ui.message.get()
-            # self.ui.message.set("")
             message = model.Message(username=self.username, message=message, quit=False)
             try:
                 self.sock.sendall(message.marshal())

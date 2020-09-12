@@ -20,15 +20,15 @@ SERVER = "SERVER"
 SHUTDOWN_MESSAGE = "shutdown"
 TYPE_EXIT = "Type 'exit' to exit>"
 MOVE_ALLOWED = "your move"
+PORT = 1234
 
 
 class Server(object):
 
     def __init__(self):
         self.players = list()
-        self.port = 1234
+        self.port = PORT
         self.socket = None
-        # self.log = ''
         self.new_game = True
         self.data = {}
 
@@ -41,11 +41,7 @@ class Server(object):
                 print(CONNECTION_ABORTED)
                 return
             print(CONNECTED_PATTERN.format(*address))
-            # try:
-            #     message = Message(**json.loads(self.receive(client)))
-            # except(ConnectionAbortedError, ConnectionResetError):
-            #     print(CONNECTION_ABORTED)
-            #     return
+
             if self.new_game:
                 username = f"player{len(self.players)}"
                 client.sendall(Message(username=SERVER, message=username).marshal())
@@ -63,13 +59,12 @@ class Server(object):
         if self.new_game:
             message = f"GAME BEGIN! Distance to award: {round(game.initial_distance, 3)}"
             self.broadcast(Message(username=SERVER, message=message))
-            # self.log += message + '\n'
         else:
             for player in self.players:
                 message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
                 player.client.sendall(Message(username=SERVER, message=message).marshal())
-                # self.log += message + '\n'
 
+        self.save()
         self.handle()
 
     def handle(self):
@@ -86,17 +81,11 @@ class Server(object):
                     return
                 if message.quit:
                     self.exit()
-                    # client.close()
-                    # self.players.remove(player)
-                    # self.players[0].sendall(Message(username={player.username}, message="quits"))
-                    # self.players[0].client.close()
-                    # self.players.remove(self.players[0])
                     return
                 angle = float(message.message)
                 player.make_move(angle)
                 message.message = f"angle: {angle % 360}, distance to award: {round(player.distance(), 3)}"
                 self.broadcast(message)
-                # self.log += message.message + '\n'
                 print(str(message))
             for player in self.players:
                 print(player)
@@ -104,7 +93,6 @@ class Server(object):
             if self.players[0].distance() <= 1 and self.players[1].distance() <= 1:
                 message = "dead heat!"
                 self.broadcast(Message(username=SERVER, message=message))
-                # self.log += message + '\n'
                 print(message)
                 self.exit()
                 self.players.clear()
@@ -113,7 +101,6 @@ class Server(object):
                 if player.distance() <= 1:
                     message = f"{player.username} won!"
                     self.broadcast(Message(username=SERVER, message=message))
-                    # self.log += message + '\n'
                     print(message)
                     self.exit()
                     self.players.clear()
@@ -135,16 +122,17 @@ class Server(object):
 
         # load data from json file
         with open('data.json') as json_file:
-            data = json.load(json_file)
-        if model.validate_json(data):
-            self.new_game = False
-            self.data = data
+            try:
+                data = json.load(json_file)
+                if model.validate_json(data):
+                    self.new_game = False
+                    self.data = data
+            except json.decoder.JSONDecodeError:
+                pass
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(("", self.port))
         self.listen()
-
-        # self.players.clear()
 
         self.save()
         print(CLOSING)
@@ -156,16 +144,11 @@ class Server(object):
         print(CLOSING)
 
     def save(self):
-        # while len(self.players) == 2:
         data = {'players': []}
         for player in self.players:
             data['players'].append(player.json())
         with open('data.json', 'w') as outfile:
             json.dump(data, outfile, indent=4)
-        # log = {'text': self.log}
-        # with open('log.json', 'w') as outfile:
-        #     json.dump(log, outfile, indent=4)
-            # time.sleep(5)
 
 
 if __name__ == "__main__":

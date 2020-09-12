@@ -3,8 +3,6 @@ from game import Player
 from jsonschema import validate
 
 
-data = {}
-
 json_schema = {
     "type": "object",
     "properties": {
@@ -29,9 +27,6 @@ json_schema = {
 with open('data.json') as json_file:
     data = json.load(json_file)
 
-validate(data, json_schema)
+validate(instance=data, schema=json_schema)
 
-for p in data['players']:
-    print(p['username'])
-    print(p['x'])
-    print(p['y'])
+print(data['players'])
