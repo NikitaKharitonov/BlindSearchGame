@@ -77,16 +77,22 @@ class Server(object):
             connected_clients_count += 1
 
         if new_game:
-            # message = f"GAME BEGIN! Distance to award: {round(self.players[0].distance(), 3)}"
-            message = Message(game_begin=True, distance=round(self.players[0].distance(), 3))
-            self.broadcast(message)
-            print(message)
+            try:
+                message = Message(game_begin=True, distance=round(self.players[0].distance(), 3))
+                self.broadcast(message)
+                print(message)
+            except ConnectionResetError:
+                print(CONNECTION_ABORTED)
+                return
         else:
             for player in self.players:
-                # message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
-                message = Message(game_continue=True, distance=round(player.distance(), 3))
-                self.send(player.client_socket, message)
-                print(message)
+                try:
+                    message = Message(game_continue=True, distance=round(player.distance(), 3))
+                    self.send(player.client_socket, message)
+                    print(message)
+                except ConnectionResetError:
+                    print(CONNECTION_ABORTED)
+                    return
 
         for player in self.players:
             print(player)

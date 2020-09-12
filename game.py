@@ -103,6 +103,12 @@ def init_players():
 
 
 def validate_json(data):
+    """
+    Checks if the given data corresponds to the schema.
+
+    :param data: the data to check.
+    :return: True if the data is correct, False otherwise.
+    """
     try:
         validate(instance=data, schema=schema)
     except jsonschema.exceptions.ValidationError as err:
@@ -129,6 +135,12 @@ def load_game_state_from_json(json_file_path):
 
 
 def dump_game_state_to_json(players, json_file_path):
+    """
+    Dumps the game state to the JSON file specified by the given path.
+
+    :param players: the game state
+    :param json_file_path: the JSON file path to load from.
+    """
     data = {'players': []}
     for player in players:
         data['players'].append(player.dict())
@@ -190,7 +202,7 @@ class Player:
         """
         Checks if the player won, i. e. reached the award.
 
-        :return: True if the player won, False otherwise
+        :return: True if the player won, False otherwise.
         """
         return self.distance() <= 1
 
