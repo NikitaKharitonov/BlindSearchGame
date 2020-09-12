@@ -27,7 +27,6 @@ class Client(object):
         if not self.ui.show():
             return
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("Waiting for server")
         while True:
             try:
                 self.sock.connect((socket.gethostname(), server.PORT))
@@ -36,12 +35,12 @@ class Client(object):
                 pass
 
         try:
-            username = model.Message(**json.loads(self.receive_all()))
+            message = model.Message(**json.loads(self.receive_all()))
         except (ConnectionAbortedError, ConnectionResetError):
             if not self.closing:
                 self.ui.alert(ERROR, CONNECTION_ERROR)
             return
-        self.username = username.message
+        self.username = message.username
         self.ui.gui.title(self.username.upper())
         self.receive_worker = threading.Thread(target=self.receive)
         self.receive_worker.start()
@@ -55,7 +54,7 @@ class Client(object):
                 if not self.closing:
                     self.ui.alert(ERROR, CONNECTION_ERROR)
                 return
-            if message.message == server.MOVE_ALLOWED:
+            if message.can_move:
                 self.move = True
             self.ui.show_message(message)
 
@@ -67,10 +66,10 @@ class Client(object):
 
     def send(self, event=None):
         if self.move:
-            message = self.ui.message.get()
-            message = model.Message(username=self.username, message=message, quit=False)
+            angle = self.ui.angle.get()
+            angle = model.Message(angle=angle)
             try:
-                self.sock.sendall(message.marshal())
+                self.sock.sendall(angle.marshal())
             except (ConnectionAbortedError, ConnectionResetError):
                 if not self.closing:
                     self.ui.alert(ERROR, CONNECTION_ERROR)
@@ -79,7 +78,7 @@ class Client(object):
     def exit(self):
         self.closing = True
         try:
-            self.sock.sendall(model.Message(username=self.username, message="", quit=True).marshal())
+            self.sock.sendall(model.Message(quit=True).marshal())
         except (ConnectionResetError, ConnectionAbortedError, OSError):
             print(CONNECTION_ERROR)
         finally:
@@ -87,6 +86,6 @@ class Client(object):
 
 
 if __name__ == "__main__":
-    print("Heloh?".lower())
+    print("heloh?")
     app = Client()
     app.execute()

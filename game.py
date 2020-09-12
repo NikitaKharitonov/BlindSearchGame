@@ -1,13 +1,44 @@
 import math
 from random import random
 import json
-
-import model
+import jsonschema
+from jsonschema import validate
 
 NUMBER_OF_PLAYERS = 2
 MAX_INITIAL_DISTANCE = 10
 MIN_INITIAL_DISTANCE = 2
 MAX_ANGLE = 360
+
+schema = {
+    "type": "object",
+    "properties": {
+        "players": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "username": {"type": "string"},
+                        "x": {"type": "number"},
+                        "y": {"type": "number"}
+                    },
+                    "required": [
+                        "username",
+                        "x",
+                        "y"
+                    ],
+                    "additionalProperties": False
+                }
+            ]
+        }
+    },
+    "required": [
+        "players"
+    ]
+}
+
 
 def init_distance():
     """
@@ -71,6 +102,14 @@ def init_players():
     return players
 
 
+def validate_json(data):
+    try:
+        validate(instance=data, schema=schema)
+    except jsonschema.exceptions.ValidationError as err:
+        return False
+    return True
+
+
 def load_game_state_from_json(json_file_path):
     """
     Loads the game state from the JSON file specified by the given path.
@@ -82,7 +121,7 @@ def load_game_state_from_json(json_file_path):
     with open(json_file_path) as json_file:
         try:
             data = json.load(json_file)
-            if model.validate_json(data):
+            if validate_json(data):
                 return True, data
         except json.decoder.JSONDecodeError:
             pass
@@ -96,6 +135,7 @@ class Player:
     by the (x, y) cartesian coordinates. The award is located in the origin
     of the plane.
     """
+
     def __init__(self, username, x, y, client_socket):
         """
         Initializes a player.

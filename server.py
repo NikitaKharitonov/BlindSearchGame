@@ -6,19 +6,19 @@ import model
 
 BUFFER_SIZE = 2 ** 10
 PORT = 1234
-
 CLOSING = "Application closing..."
 CONNECTION_ABORTED = "Connection aborted"
 CONNECTED_PATTERN = "Client connected: {}:{}"
-ERROR_ARGUMENTS = "Provide port number as the first command line argument"
+# ERROR_ARGUMENTS = "Provide port number as the first command line argument"
 ERROR_OCCURRED = "Error Occurred"
-EXIT = "exit"
-JOIN_PATTERN = "{username} has joined"
+# EXIT = "exit"
+# JOIN_PATTERN = "{username} has joined"
 RUNNING = "Server is running..."
-SERVER = "SERVER"
-SHUTDOWN_MESSAGE = "shutdown"
-TYPE_EXIT = "Type 'exit' to exit>"
-MOVE_ALLOWED = "your move"
+# SERVER = "SERVER"
+# SHUTDOWN_MESSAGE = "shutdown"
+# TYPE_EXIT = "Type 'exit' to exit>"
+# MOVE_ALLOWED = "your move"
+# QUIT = "quit"
 JSON_FILE_PATH = "data.json"
 
 
@@ -88,18 +88,20 @@ class Server(object):
             print(CONNECTED_PATTERN.format(*address))
             player = self.players[connected_clients_count]
             player.client_socket = client_socket
-            # client_socket.sendall(Message(username=SERVER, message=player.username).marshal())
-            self.send(client_socket, Message(username=SERVER, message=player.username))
+            self.send(client_socket, Message(username=player.username))
             connected_clients_count += 1
 
         if new_game:
-            message = f"GAME BEGIN! Distance to award: {round(self.players[0].distance(), 3)}"
-            self.broadcast(Message(username=SERVER, message=message))
+            # message = f"GAME BEGIN! Distance to award: {round(self.players[0].distance(), 3)}"
+            message = Message(game_begin=True, distance=round(self.players[0].distance(), 3))
+            self.broadcast(message)
+            print(message)
         else:
             for player in self.players:
-                message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
-                # player.client_socket.sendall(Message(username=SERVER, message=message).marshal())
-                self.send(player.client_socket, Message(username=SERVER, message=message))
+                # message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
+                message = Message(game_continue=True, distance=round(player.distance(), 3))
+                self.send(player.client_socket, message)
+                print(message)
 
         for player in self.players:
             print(player)
@@ -113,8 +115,7 @@ class Server(object):
             # Receive and handle the moves of the players in a row
             for player in self.players:
                 client_socket = player.client_socket
-                message_from_server = Message(username=SERVER, message=MOVE_ALLOWED)
-                # client_socket.sendall(message_from_server.marshal())
+                message_from_server = Message(can_move=True)
                 self.send(client_socket, message_from_server)
                 try:
                     message = Message(**json.loads(self.receive(client_socket)))
@@ -124,19 +125,19 @@ class Server(object):
                 if message.quit:
                     cont = False
                     break
-                angle = float(message.message)
-                player.move(angle)
-                message.message = f"angle: {angle % 360}, distance to award: {round(player.distance(), 3)}"
+                player.move(message.angle)
+                message.username = player.username.upper()
+                message.distance = player.distance()
                 self.broadcast(message)
-                print(str(message))
+                print(message)
 
             for player in self.players:
                 print(player)
 
             # fixme ?
             if self.players[0].distance() <= 1 and self.players[1].distance() <= 1:
-                message = "dead heat!"
-                self.broadcast(Message(username=SERVER, message=message))
+                message = Message(dead_heat=True)
+                self.broadcast(message)
                 print(message)
                 self.players = list()
                 break
@@ -144,8 +145,9 @@ class Server(object):
             # Check if a player won
             for player in self.players:
                 if player.distance() <= 1:
-                    message = f"{player.username} won!"
-                    self.broadcast(Message(username=SERVER, message=message))
+                    # message = f"{player.username} won!"
+                    message = Message(win=True, username=player.username)
+                    self.broadcast(message)
                     print(message)
                     self.players = list()
                     cont = False
