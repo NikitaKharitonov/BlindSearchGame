@@ -9,16 +9,8 @@ PORT = 1234
 CLOSING = "Application closing..."
 CONNECTION_ABORTED = "Connection aborted"
 CONNECTED_PATTERN = "Client connected: {}:{}"
-# ERROR_ARGUMENTS = "Provide port number as the first command line argument"
 ERROR_OCCURRED = "Error Occurred"
-# EXIT = "exit"
-# JOIN_PATTERN = "{username} has joined"
 RUNNING = "Server is running..."
-# SERVER = "SERVER"
-# SHUTDOWN_MESSAGE = "shutdown"
-# TYPE_EXIT = "Type 'exit' to exit>"
-# MOVE_ALLOWED = "your move"
-# QUIT = "quit"
 JSON_FILE_PATH = "data.json"
 
 
@@ -46,13 +38,6 @@ class Server(object):
         self.socket.close()
         for player in self.players:
             player.client_socket.close()
-
-    def dump_game_state_to_json(self, players):
-        data = {'players': []}
-        for player in players:
-            data['players'].append(player.dict())
-        with open(JSON_FILE_PATH, 'w') as outfile:
-            json.dump(data, outfile, indent=4)
 
     def run(self):
 
@@ -106,7 +91,7 @@ class Server(object):
         for player in self.players:
             print(player)
 
-        self.dump_game_state_to_json(self.players)
+        game.dump_game_state_to_json(self.players, JSON_FILE_PATH)
 
         # HANDLE
 
@@ -134,31 +119,34 @@ class Server(object):
             for player in self.players:
                 print(player)
 
-            # fixme ?
-            if self.players[0].distance() <= 1 and self.players[1].distance() <= 1:
-                message = Message(dead_heat=True)
+            # Check how many players won
+            how_many_players_won = list()
+            for player in self.players:
+                if player.won():
+                    how_many_players_won.append(player)
+
+            # Check if one player won and end the game if yes
+            if len(how_many_players_won) == 1:
+                message = Message(win=True, username=how_many_players_won[0].username)
                 self.broadcast(message)
                 print(message)
                 self.players = list()
                 break
 
-            # Check if a player won
-            for player in self.players:
-                if player.distance() <= 1:
-                    # message = f"{player.username} won!"
-                    message = Message(win=True, username=player.username)
-                    self.broadcast(message)
-                    print(message)
-                    self.players = list()
-                    cont = False
-                    break
+            # Check if many players won and end the game if yes
+            if len(how_many_players_won) > 1:
+                message = Message(nichya=True)
+                self.broadcast(message)
+                print(message)
+                self.players = list()
+                break
 
-            self.dump_game_state_to_json(self.players)
+            game.dump_game_state_to_json(self.players, JSON_FILE_PATH)
 
         # CLOSE
 
         self.close_client_sockets()
-        self.dump_game_state_to_json(self.players)
+        game.dump_game_state_to_json(self.players, JSON_FILE_PATH)
         print(CLOSING)
 
 

@@ -1,20 +1,12 @@
 import tkinter
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 
 CLOSING_PROTOCOL = "WM_DELETE_WINDOW"
 END_OF_LINE = "\n"
 KEY_RETURN = "<Return>"
 TEXT_STATE_DISABLED = "disabled"
 TEXT_STATE_NORMAL = "normal"
-# CONNECTION_ERROR = "Could not connect to server"
-# ERROR = "Error"
-# INPUT_SERVER_HOST = "Input Server Host"
-# INPUT_SERVER_PORT = "Input Server Port"
-# INPUT_USERNAME = "Input your username"
 SEND = "Send"
-# SERVER_HOST = "Server Host"
-# SERVER_PORT = "Server Port"
-# USERNAME = "Username"
 
 
 class BlindSearchGameUI(object):
@@ -51,14 +43,6 @@ class BlindSearchGameUI(object):
         self.input_field.bind(KEY_RETURN, self.client.send)
         self.send_button = tkinter.Button(self.gui, text=SEND, command=self.client.send)
         self.send_button.pack()
-
-    # def input_dialogs(self):
-    #     self.gui.lower()
-    #     # self.client.username = simpledialog.askstring(USERNAME, INPUT_USERNAME, parent=self.gui).lower()
-    #     if self.client.username is None:
-    #         return False
-    #     self.gui.title(self.client.username.upper())
-    #     return True
 
     def alert(self, title, message):
         messagebox.showerror(title, message)

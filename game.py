@@ -4,7 +4,7 @@ import json
 import jsonschema
 from jsonschema import validate
 
-NUMBER_OF_PLAYERS = 2
+NUMBER_OF_PLAYERS = 3
 MAX_INITIAL_DISTANCE = 10
 MIN_INITIAL_DISTANCE = 2
 MAX_ANGLE = 360
@@ -14,8 +14,8 @@ schema = {
     "properties": {
         "players": {
             "type": "array",
-            "minItems": 2,
-            "maxItems": 2,
+            "minItems": NUMBER_OF_PLAYERS,
+            "maxItems": NUMBER_OF_PLAYERS,
             "items": [
                 {
                     "type": "object",
@@ -93,7 +93,7 @@ def init_players():
     """
     distance = init_distance()
     players = list()
-    for i in range(0, 2):
+    for i in range(0, NUMBER_OF_PLAYERS):
         players.append(
             create_player_from_polar_coordinates(
                 f"player{i}", distance, MAX_ANGLE * random(), None
@@ -126,6 +126,14 @@ def load_game_state_from_json(json_file_path):
         except json.decoder.JSONDecodeError:
             pass
     return False, None
+
+
+def dump_game_state_to_json(players, json_file_path):
+    data = {'players': []}
+    for player in players:
+        data['players'].append(player.dict())
+    with open(json_file_path, 'w') as outfile:
+        json.dump(data, outfile, indent=4)
 
 
 class Player:
@@ -177,6 +185,14 @@ class Player:
         y = math.sin(angle)
         self.x += x
         self.y += y
+
+    def won(self):
+        """
+        Checks if the player won, i. e. reached the award.
+
+        :return: True if the player won, False otherwise
+        """
+        return self.distance() <= 1
 
     def dict(self):
         """
