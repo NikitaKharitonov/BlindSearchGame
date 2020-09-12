@@ -7,6 +7,7 @@ from model import Message
 import model
 
 BUFFER_SIZE = 2 ** 10
+PORT = 1234
 
 CLOSING = "Application closing..."
 CONNECTION_ABORTED = "Connection aborted"
@@ -20,7 +21,7 @@ SERVER = "SERVER"
 SHUTDOWN_MESSAGE = "shutdown"
 TYPE_EXIT = "Type 'exit' to exit>"
 MOVE_ALLOWED = "your move"
-PORT = 1234
+JSON_FILE_PATH = "data.json"
 
 
 class Server(object):
@@ -30,11 +31,12 @@ class Server(object):
         self.port = PORT
         self.socket = None
         self.new_game = True
-        self.data = {}
+        self.game_state = {}
 
     def listen(self):
         self.socket.listen(1)
-        while len(self.players) != game.NUMBER_OF_PLAYERS:
+        connected_clients_count = 0
+        while connected_clients_count != game.NUMBER_OF_PLAYERS:
             try:
                 client, address = self.socket.accept()
             except OSError:
@@ -43,18 +45,23 @@ class Server(object):
             print(CONNECTED_PATTERN.format(*address))
 
             if self.new_game:
-                username = f"player{len(self.players)}"
-                client.sendall(Message(username=SERVER, message=username).marshal())
-                player = Player(game.initial_distance, game.MAX_ANGLE * random(), client, username)
-                self.players.append(player)
-            else:
-                player_data = self.data['players'][len(self.players)]
-                player = game.recreate_player(player_data['username'],
-                                              client,
-                                              player_data['x'],
-                                              player_data['y'])
-                self.players.append(player)
+                player = self.players[connected_clients_count]
+                player.client = client
+                # username = f"player{len(self.players)}"
                 client.sendall(Message(username=SERVER, message=player.username).marshal())
+                # player = Player(game.initial_distance, game.MAX_ANGLE * random(), client, username)
+                # self.players.append(player)
+            else:
+                # player_data = self.game_state['players'][len(self.players)]
+                # player = game.recreate_player(player_data['username'],
+                #                               client,
+                #                               player_data['x'],
+                #                               player_data['y'])
+                player = self.players[connected_clients_count]
+                player.client = client
+                # self.players.append(player)
+                client.sendall(Message(username=SERVER, message=player.username).marshal())
+            connected_clients_count += 1
 
         if self.new_game:
             message = f"GAME BEGIN! Distance to award: {round(game.initial_distance, 3)}"
@@ -63,8 +70,9 @@ class Server(object):
             for player in self.players:
                 message = f"GAME CONTINUE! Distance to award: {round(player.distance(), 3)}"
                 player.client.sendall(Message(username=SERVER, message=message).marshal())
-
-        self.save()
+        for player in self.players:
+            print(player)
+        self.dump_game_state_to_json()
         self.handle()
 
     def handle(self):
@@ -80,7 +88,7 @@ class Server(object):
                     print(CONNECTION_ABORTED)
                     return
                 if message.quit:
-                    self.exit()
+                    self.close_clients()
                     return
                 angle = float(message.message)
                 player.make_move(angle)
@@ -94,18 +102,18 @@ class Server(object):
                 message = "dead heat!"
                 self.broadcast(Message(username=SERVER, message=message))
                 print(message)
-                self.exit()
-                self.players.clear()
+                self.close_clients()
+                self.players = list()
                 break
             for player in self.players:
                 if player.distance() <= 1:
                     message = f"{player.username} won!"
                     self.broadcast(Message(username=SERVER, message=message))
                     print(message)
-                    self.exit()
-                    self.players.clear()
+                    self.close_clients()
+                    self.players = list()
                     return
-            self.save()
+            self.dump_game_state_to_json()
 
     def broadcast(self, message):
         for player in self.players:
@@ -120,35 +128,68 @@ class Server(object):
     def run(self):
         print(RUNNING)
 
-        # load data from json file
-        with open('data.json') as json_file:
-            try:
-                data = json.load(json_file)
-                if model.validate_json(data):
-                    self.new_game = False
-                    self.data = data
-            except json.decoder.JSONDecodeError:
-                pass
+        success, data = self.load_game_state_from_json()
+        if success:
+            self.parse_data(data)
+        else:
+            self.initialize_players()
+        self.new_game = not success
+
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(("", self.port))
         self.listen()
 
-        self.save()
+        self.dump_game_state_to_json()
         print(CLOSING)
 
-    def exit(self):
+    def close_clients(self):
         self.socket.close()
         for player in self.players:
             player.client.close()
         print(CLOSING)
 
-    def save(self):
+    def dump_game_state_to_json(self):
         data = {'players': []}
         for player in self.players:
             data['players'].append(player.json())
-        with open('data.json', 'w') as outfile:
+        with open(JSON_FILE_PATH, 'w') as outfile:
             json.dump(data, outfile, indent=4)
+
+    def parse_data(self, data):
+        for player_data in data['players']:
+            player = game.recreate_player(player_data['username'],
+                                          None,
+                                          player_data['x'],
+                                          player_data['y'])
+            self.players.append(player)
+
+    def initialize_players(self):
+        self.players = (Player(game.initial_distance, game.MAX_ANGLE * random(), None, "player0"),
+                        Player(game.initial_distance, game.MAX_ANGLE * random(), None, "player1"))
+
+    def load_game_state_from_json(self):
+        """
+        Loads the game state from the JSON file specified by JSON_FILE_PATH
+        :return: True when the game state has been successfully loaded,
+        False otherwise
+        """
+        with open(JSON_FILE_PATH) as json_file:
+            try:
+                data = json.load(json_file)
+                if model.validate_json(data):
+                    # self.new_game = False
+                    self.game_state = data
+                    # for player_data in data['players']:
+                    #     player = game.recreate_player(player_data['username'],
+                    #                                   None,
+                    #                                   player_data['x'],
+                    #                                   player_data['y'])
+                    #     self.players.append(player)
+                    return True, data
+            except json.decoder.JSONDecodeError:
+                pass
+        return False, None
 
 
 if __name__ == "__main__":
